@@ -24,6 +24,7 @@ from openbrokerapi.service_broker import (
     DeprovisionDetails
 )
 from opcua import Client
+from opcua import Node
 from opcua import ua
 from opcua.common.subscription import Subscription
 
@@ -34,20 +35,17 @@ class OpcuaServiceBroker(ServiceBroker):
 
     def catalog(self) -> Service:
         servers = []
-        i = 0
         for server_edp in uadiscover(self.url):
-            server = {}
             client = Client(server_edp.EndpointUrl)
 
             client.connect()
             try:
                 node = client.get_root_node()
                 print("Browsing node {0} at {1}\n".format(node, server_edp.EndpointUrl))
-                nodes = node.get_children_descriptions()
-                server['endpoint'] = server_edp.EndpointUrl
-                server['nodes'] = nodes
-                servers[i] = server
-                i = i + 1
+
+                children_nodes = []
+                get_children_nodes(node, children_nodes)
+                servers.append(dict(name=server_edp.Server.ApplicationName.to_string(), endpoint=server_edp.EndpointUrl, nodes=children_nodes))
             finally:
                 client.disconnect()
 
@@ -101,21 +99,16 @@ def parse_args(parser):
         args.url = ua.OPC_TCP_SCHEME + '://' + args.url
     return args
 
-def get_node(client, args):
-    node = client.get_node(args.nodeid)
-    if args.path:
-        path = args.path.split(",")
-        if node.nodeid == ua.NodeId(84, 0) and path[0] == "0:Root":
-            # let user specify root if not node given
-            path = path[1:]
-        node = node.get_child(path)
-    return node
+def get_children_nodes(node, children_nodes=[], depth=2, timeout:object=4):
+    for leaf in node.get_children_descriptions():
+        children_nodes.append(dict(NodeId=leaf.NodeId.to_string(), DisplayName=leaf.DisplayName.to_string(), BrowseName=leaf.BrowseName.to_string(), Depth=3-depth))
+        if depth:
+            get_children_nodes(Node(node.server, leaf.NodeId), children_nodes, depth - 1, timeout)
 
 def uadiscover(url:object, timeout:object=4):
     client = Client(url, timeout=timeout)
 
     print("Performing discovery at {0}\n".format(url))
-    # return client.connect_and_find_servers()
     return client.connect_and_get_server_endpoints()
 
 def uasubscribe(url:object, nodeid:ua.NodeId, path:str, eventtype:str="datachange", timeout:object=4):

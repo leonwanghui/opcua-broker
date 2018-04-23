@@ -35,16 +35,18 @@ class OpcuaServiceBroker(ServiceBroker):
     def catalog(self) -> Service:
         servers = []
         i = 0
-        for server in uadiscover(self.url):
-            client = Client(server.endpoint)
+        for server_edp in uadiscover(self.url):
+            server = {}
+            client = Client(server_edp.EndpointUrl)
 
             client.connect()
             try:
                 node = client.get_root_node()
-                print("Browsing node {0} at {1}\n".format(node, server.endpoint))
+                print("Browsing node {0} at {1}\n".format(node, server_edp.EndpointUrl))
                 nodes = node.get_children_descriptions()
-                servers[i]['endpoint'] = server.endpoint
-                servers[i]['nodes'] = nodes
+                server['endpoint'] = server_edp.EndpointUrl
+                server['nodes'] = nodes
+                servers[i] = server
                 i = i + 1
             finally:
                 client.disconnect()
@@ -113,8 +115,8 @@ def uadiscover(url:object, timeout:object=4):
     client = Client(url, timeout=timeout)
 
     print("Performing discovery at {0}\n".format(url))
-    return client.connect_and_find_servers()
-    # client.connect_and_get_server_endpoints()
+    # return client.connect_and_find_servers()
+    return client.connect_and_get_server_endpoints()
 
 def uasubscribe(url:object, nodeid:ua.NodeId, path:str, eventtype:str="datachange", timeout:object=4):
     client = Client(url, timeout=timeout)

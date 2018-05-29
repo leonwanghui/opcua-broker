@@ -12,6 +12,7 @@ from openbrokerapi.log_util import basic_config
 from openbrokerapi.service_broker import (
     ServiceBroker,
     Service,
+    CatalogServiceSpec,
     ProvisionedServiceSpec,
     UpdateServiceSpec,
     Binding,
@@ -30,46 +31,142 @@ from opcua.common.subscription import Subscription
 
 
 class OpcuaServiceBroker(ServiceBroker):
-    def __init__(self, args):
-        self.url = args.url
+    def __init__(self):
+        pass
 
-    def catalog(self) -> Service:
-        servers = []
-        for server_edp in uadiscover(self.url):
-            client = Client(server_edp.EndpointUrl)
+    def catalog(self) -> CatalogServiceSpec:
+        discovery_instance = {
+            'create': {
+                "parameters": {
+                    "$schema": "http://json-schema.org/draft-04/schema#",
+                    "type": "object",
+                    "properties": {
+                        "url": {
+                            "description": "The url of discovery server specified for provisioning discovery service.",
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+        node_instance = {
+            'create': {
+                "parameters": {
+                    "$schema": "http://json-schema.org/draft-04/schema#",
+                    "type": "object",
+                    "properties": {
+                        "nodesToAdd": {
+                            "type": "object",
+                            "properties": {
+                                "parentNodeId": {
+                                    "description": "The resource type specified for provisioning node management service.",
+                                    "type": "string"
+                                },
+                                "referenceTypeId": {
+                                    "description": "The resource type specified for provisioning node management service.",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        reference_instance = {
+            'create': {
+                "parameters": {
+                    "$schema": "http://json-schema.org/draft-04/schema#",
+                    "type": "object",
+                    "properties": {
+                        "referencesToAdd": {
+                            "type": "object",
+                            "properties": {
+                                "sourceNodeId": {
+                                    "description": "The resource type specified for provisioning node management service.",
+                                    "type": "string"
+                                },
+                                "referenceTypeId": {
+                                    "description": "The resource type specified for provisioning node management service.",
+                                    "type": "string"
+                                },
+                                "targetNodeId": {
+                                    "description": "The resource type specified for provisioning node management service.",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-            client.connect()
-            try:
-                node = client.get_root_node()
-                print("Browsing node {0} at {1}\n".format(node, server_edp.EndpointUrl))
-
-                children_nodes = []
-                get_children_nodes(node, children_nodes)
-                servers.append(dict(name=server_edp.Server.ApplicationName.to_string(), endpoint=server_edp.EndpointUrl, nodes=children_nodes))
-            finally:
-                client.disconnect()
-
-        return Service(
-            id='00000000-0000-0000-0000-000000000000',
-            name='opcua',
-            description='opcua transport service',
-            bindable=False,
-            plans=[
-                ServicePlan(
+        return CatalogServiceSpec(
+            services=[
+                Service(
                     id='00000000-0000-0000-0000-000000000000',
-                    name='node',
-                    description='opcua node service plan',
-                    schemas=Schemas({'servers':servers}),
+                    name='opcua',
+                    description='opcua transport service',
+                    bindable=False,
+                    plans=[
+                        ServicePlan(
+                            id='00000000-0000-0000-0000-000000000000',
+                            name='server_discovery',
+                            description='opcua server discovery service plan',
+                            schemas=Schemas(service_instance=discovery_instance),
+                        ),
+                        ServicePlan(
+                            id='00000000-0000-0000-0000-000000000000',
+                            name='endpoint_discovery',
+                            description='opcua endpoint discovery service plan',
+                            schemas=Schemas(service_instance=discovery_instance),
+                        ),
+                    ],
+                    tags=['discovery'],
+                    plan_updateable=False,
                 ),
-                ServicePlan(
+                Service(
                     id='00000000-0000-0000-0000-000000000000',
-                    name='subscribtion',
-                    description='opcua subscribtion service plan',
-                    schemas=Schemas({'servers':servers}),
+                    name='opcua_device_manager',
+                    description='opcua device management service',
+                    bindable=False,
+                    plans=[
+                        ServicePlan(
+                            id='00000000-0000-0000-0000-000000000000',
+                            name='node_management',
+                            description='opcua node management service plan',
+                            schemas=Schemas(service_instance=node_instance),
+                        ),
+                        ServicePlan(
+                            id='00000000-0000-0000-0000-000000000000',
+                            name='reference_management',
+                            description='opcua node references management service plan',
+                            schemas=Schemas(service_instance=reference_instance),
+                        ),
+                    ],
+                    tags=['device_management'],
+                    plan_updateable=False,
+                ),
+                Service(
+                    id='00000000-0000-0000-0000-000000000000',
+                    name='opcua_device_monitor',
+                    description='opcua device monitoring service',
+                    bindable=False,
+                    plans=[
+                        ServicePlan(
+                            id='00000000-0000-0000-0000-000000000000',
+                            name='data_change',
+                            description='opcua data change monitoring service plan',
+                        ),
+                        ServicePlan(
+                            id='00000000-0000-0000-0000-000000000000',
+                            name='events',
+                            description='opcua events monitoring service plan',
+                        ),
+                    ],
+                    tags=['monitoring'],
+                    plan_updateable=True,
                 ),
             ],
-            tags=['node', 'subscribtion'],
-            plan_updateable=True,
         )
 
     def provision(self, instance_id: str, service_details: ProvisionDetails,
@@ -92,6 +189,12 @@ class OpcuaServiceBroker(ServiceBroker):
     def last_operation(self, instance_id: str, operation_data: str) -> LastOperation:
         pass
 
+def convert_to_url_format(url: str) -> str:
+    if url and '://' not in url:
+        logging.info("Adding default scheme %s to URL %s", ua.OPC_TCP_SCHEME, url)
+        url = ua.OPC_TCP_SCHEME + '://' + url
+    return url
+
 def parse_args(parser):
     args = parser.parse_args()
     if args.url and '://' not in args.url:
@@ -104,12 +207,6 @@ def get_children_nodes(node, children_nodes=[], depth=2, timeout:object=4):
         children_nodes.append(dict(NodeId=leaf.NodeId.to_string(), DisplayName=leaf.DisplayName.to_string(), BrowseName=leaf.BrowseName.to_string(), Depth=3-depth))
         if depth:
             get_children_nodes(Node(node.server, leaf.NodeId), children_nodes, depth - 1, timeout)
-
-def uadiscover(url:object, timeout:object=4):
-    client = Client(url, timeout=timeout)
-
-    print("Performing discovery at {0}\n".format(url))
-    return client.connect_and_get_server_endpoints()
 
 def uasubscribe(url:object, nodeid:ua.NodeId, path:str, eventtype:str="datachange", timeout:object=4):
     client = Client(url, timeout=timeout)
@@ -159,7 +256,7 @@ if __name__ == "__main__":
 
     args = parse_args(parser)
     # start the server without authentication
-    api.serve(OpcuaServiceBroker(args), None)
+    api.serve(OpcuaServiceBroker(), None)
 
     app = Flask(__name__)
     app.run(args.api_server)

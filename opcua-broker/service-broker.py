@@ -2,6 +2,8 @@ import argparse
 import logging
 import time
 
+import handler
+
 from flask import Flask
 from openbrokerapi import api
 from openbrokerapi.catalog import (
@@ -31,8 +33,9 @@ from opcua.common.subscription import Subscription
 
 
 class OpcuaServiceBroker(ServiceBroker):
-    def __init__(self):
-        pass
+    def __init__(self,
+                 opcua_handler:handler.OpcuaHandler):
+        self.opcua_handler = opcua_handler
 
     def catalog(self) -> CatalogServiceSpec:
         discovery_instance = {
@@ -171,14 +174,14 @@ class OpcuaServiceBroker(ServiceBroker):
 
     def provision(self, instance_id: str, service_details: ProvisionDetails,
                   async_allowed: bool) -> ProvisionedServiceSpec:
-        pass
+        return self.opcua_handler.provision_servers_discovery_instance()
 
     def update(self, instance_id: str, details: UpdateDetails, async_allowed: bool) -> UpdateServiceSpec:
         pass
 
     def deprovision(self, instance_id: str, details: DeprovisionDetails,
                     async_allowed: bool) -> DeprovisionServiceSpec:
-        pass
+        return self.opcua_handler.deprovision_servers_discovery_instance()
 
     def bind(self, instance_id: str, binding_id: str, details: BindDetails) -> Binding:
         pass
@@ -256,7 +259,8 @@ if __name__ == "__main__":
 
     args = parse_args(parser)
     # start the server without authentication
-    api.serve(OpcuaServiceBroker(), None)
+    opcua_handler = handler.OpcuaHandler(url=args.url)
+    api.serve(OpcuaServiceBroker(opcua_handler), None)
 
     app = Flask(__name__)
-    app.run(args.api_server)
+    app.run(args.port)

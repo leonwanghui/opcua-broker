@@ -1,5 +1,6 @@
 
 from . import openbrokerapi.api
+from . import handler
 from . import (
     openbrokerapi.catalog.ServicePlan,
     openbrokerapi.catalog.Schemas

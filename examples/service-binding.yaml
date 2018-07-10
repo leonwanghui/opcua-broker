@@ -1,0 +1,9 @@
+apiVersion: servicecatalog.k8s.io/v1beta1
+kind: ServiceBinding
+metadata:
+  name: service-binding
+  namespace: opcua
+spec:
+  instanceRef:
+    name: service-instance
+  parameters:

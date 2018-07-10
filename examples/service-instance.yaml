@@ -1,0 +1,10 @@
+apiVersion: servicecatalog.k8s.io/v1beta1
+kind: ServiceInstance
+metadata:
+  name: service-instance
+  namespace: opcua
+spec:
+  clusterServiceClassExternalName: opcua_service
+  clusterServicePlanExternalName: device_discovery
+  parameters:
+    discovery_url: opc.tcp://144.202.51.44:4840

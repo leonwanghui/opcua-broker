@@ -1,5 +1,8 @@
-FROM python:3.6
+FROM python:3.5
 
-RUN pip install opcua-broker
+ADD ./opcua-broker /opcua-broker
 
-CMD opcua-broker
+RUN apt-get update && apt-get install -y python-dev python-pip
+RUN pip install cryptography opcua openbrokerapi flask
+
+CMD ["python", "/opcua-broker/service-broker.py", "-u", "opc.tcp://localhost:4840"]

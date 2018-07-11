@@ -7,3 +7,4 @@ spec:
   instanceRef:
     name: service-instance
   parameters:
+    key1: value1

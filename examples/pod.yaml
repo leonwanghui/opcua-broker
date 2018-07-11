@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: opcua-demo
+  namespace: opcua
+spec:
+  containers:
+  - name: opcua-demo
+    image: leonwanghui/opcua-demo:latest
+    imagePullPolicy: IfNotPresent
+    command: ['sh', '-c', 'echo The app is running! && sleep 36000']
+    volumeMounts:
+    - name: opcua-secrets
+      mountPath: "/etc/secrets"
+      readOnly: true
+  volumes:
+  - name: opcua-secrets
+    secret:
+      secretName: service-binding

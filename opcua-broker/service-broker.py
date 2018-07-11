@@ -135,32 +135,32 @@ class OpcuaServiceBroker(ServiceBroker):
 
         return Service(
             id=opcua_service_class_id,
-            name='opcua_service',
+            name='opcua-service',
             description='opcua transport service',
             bindable=False,
             plans=[
                 ServicePlan(
                     id=discovery_service_plan_id,
-                    name='device_discovery',
+                    name='device-discovery',
                     description='opcua device discovery service plan',
                     bindable=True,
                     schemas=Schemas(service_instance=discovery_instance),
                 ),
                 ServicePlan(
                     id=node_management_service_plan_id,
-                    name='node_management',
+                    name='node-management',
                     description='opcua device nodes management service plan',
                     schemas=Schemas(service_instance=node_instance),
                 ),
                 ServicePlan(
                     id='00000000-0000-0000-0000-000000000003',
-                    name='reference_management',
+                    name='reference-management',
                     description='opcua device node references management service plan',
                     schemas=Schemas(service_instance=reference_instance),
                 ),
                 ServicePlan(
                     id='00000000-0000-0000-0000-000000000004',
-                    name='data_change',
+                    name='data-change',
                     description='opcua data change monitoring service plan',
                     bindable=True,
                 ),
@@ -171,7 +171,7 @@ class OpcuaServiceBroker(ServiceBroker):
                     bindable=True,
                 ),
             ],
-            tags=['discovery', 'device_management', 'monitoring'],
+            tags=['discovery', 'device-management', 'monitoring'],
             plan_updateable=True,
         )
 

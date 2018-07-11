@@ -1,6 +1,6 @@
 # Default values for OpenSDS Service Broker
 # Image to use
-image: opensdsio/service-broker:latest
+image: leonwanghui/opcua-broker:latest
 # ImagePullPolicy; valid values are "IfNotPresent", "Never", and "Always"
 imagePullPolicy: IfNotPresent
 deployClusterServiceBroker: true
